@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>מעקב שינויים בבורסה</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef1f4;--panel:#fff;--ink:#14202b;--mute:#66737f;--line:#d9dfe5;--up:#0e7c66;--dn:#b3261e;--upbg:#d7efe8;--dnbg:#f6dcda;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10171d;--panel:#18222b;--ink:#e8edf1;--mute:#93a1ad;--line:#2a3742;--up:#4fc9a8;--dn:#ff8a80;--upbg:#173a31;--dnbg:#43201f}}
+:root[data-theme="dark"]{--bg:#10171d;--panel:#18222b;--ink:#e8edf1;--mute:#93a1ad;--line:#2a3742;--up:#4fc9a8;--dn:#ff8a80;--upbg:#173a31;--dnbg:#43201f}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Rubik,"Segoe UI",Arial,sans-serif;line-height:1.5}
+main{max-width:980px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:1.6rem;margin:0 0 4px;font-weight:700}
+.sub{color:var(--mute);margin:0 0 16px;font-size:.95rem}
+.demo{background:var(--dnbg);border:1px solid var(--dn);border-radius:6px;padding:8px 12px;margin-bottom:16px;font-size:.9rem}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.bar button{font:inherit;padding:6px 14px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;cursor:pointer}
+.bar button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:focus-visible{outline:2px solid var(--up);outline-offset:2px}
+.wrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px}
+table{width:100%;border-collapse:collapse;min-width:640px}
+th,td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-weight:500;color:var(--mute);font-size:.85rem;cursor:pointer;user-select:none}
+tr:last-child td{border-bottom:0}
+.sym{color:var(--mute);font-size:.8rem;direction:ltr;display:block;text-align:right}
+.num{font-variant-numeric:tabular-nums;direction:ltr;text-align:left}
+td.chg{width:160px}
+.cell{position:relative;height:28px;display:flex;align-items:center;direction:ltr}
+.cell i{position:absolute;top:3px;bottom:3px;border-radius:2px}
+.cell b{position:relative;z-index:1;font-weight:500;font-variant-numeric:tabular-nums;width:100%;text-align:center}
+.up{color:var(--up)}.dn{color:var(--dn)}
+.spark{display:block;width:96px;height:28px;direction:ltr}
+.alerts{background:var(--panel);border:1px solid var(--line);border-inline-start:4px solid var(--dn);border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:.92rem}
+.alerts strong{display:block;margin-bottom:4px}
+.alerts ul{margin:0;padding-inline-start:18px}
+.foot{color:var(--mute);font-size:.85rem;margin-top:12px}
+</style>
+</head>
+<body>
+<main>
+<h1>מעקב שינויים בבורסה</h1>
+<p class="sub" id="upd"></p>
+<div class="demo" id="demo" hidden>נתוני הדגמה בלבד. המחירים כאן אינם אמיתיים. הם יוחלפו בנתונים אמיתיים כשהסוכן ירוץ ויפרסם את data.json.</div>
+<div class="alerts" id="alerts" hidden></div>
+<div class="bar" id="filters" role="group" aria-label="סינון לפי בורסה">
+<button data-m="all" aria-pressed="true">הכל</button>
+<button data-m="TA" aria-pressed="false">תל אביב</button>
+<button data-m="US" aria-pressed="false">וול סטריט</button>
+</div>
+<div class="wrap"><table>
+<thead><tr>
+<th data-k="name">נכס</th><th data-k="p">מחיר</th>
+<th data-k="d1">מול אתמול</th><th data-k="w1">מול שבוע שעבר</th><th data-k="m1">מול חודש שעבר</th><th>30 יום אחרונים</th>
+</tr></thead>
+<tbody id="rows"></tbody>
+</table></div>
+<p class="foot">השינוי מחושב לפי מחיר סגירה מול יום המסחר האחרון שקדם לתאריך ההשוואה. לחיצה על כותרת עמודה ממיינת.</p>
+</main>
+<script>
+// name, symbol, market, price now, price yesterday, a week ago, a month ago (demo values)
+var DEMO={updated:"2026-09-24",demo:true,items:[
+{n:"ת\"א 125",s:"TA125",m:"TA",p:2410,y:2395,w:2372,mo:2298},
+{n:"ת\"א 35",s:"TA35",m:"TA",p:2655,y:2640,w:2611,mo:2540},
+{n:"טבע",s:"TEVA",m:"TA",p:6120,y:6205,w:5980,mo:5410},
+{n:"לאומי",s:"LUMI",m:"TA",p:3980,y:3955,w:3902,mo:3760},
+{n:"אלביט מערכות",s:"ESLT",m:"TA",p:7340,y:7290,w:7455,mo:7010},
+{n:"S&P 500",s:"^GSPC",m:"US",p:5820,y:5834,w:5760,mo:5620},
+{n:"נאסד\"ק",s:"^IXIC",m:"US",p:18420,y:18510,w:18190,mo:17650},
+{n:"אפל",s:"AAPL",m:"US",p:224.5,y:226.1,w:221.3,mo:214.8},
+{n:"אנבידיה",s:"NVDA",m:"US",p:132.4,y:129.8,w:126.9,mo:118.2},
+{n:"טסלה",s:"TSLA",m:"US",p:248.7,y:251.9,w:239.4,mo:227.6}
+]};
+var data=[],market="all",sortK=null,asc=false;
+function pct(a,b){return b?(a-b)/b*100:0}
+function demoHist(x){var k=[[0,x.mo],[22,x.w],[29,x.y],[30,x.p]],o=[],i,j;
+for(i=0;i<=30;i++){for(j=1;j<k.length-1&&i>k[j][0];j++);var a=k[j-1],b=k[j],t=(i-a[0])/(b[0]-a[0]);
+o.push(a[1]+(b[1]-a[1])*t+Math.sin(i*1.7+x.p)*x.p*.004)}return o}
+function spark(h){var mn=Math.min.apply(0,h),mx=Math.max.apply(0,h),r=mx-mn||1,c=h[h.length-1]>=h[0]?"var(--up)":"var(--dn)";
+var pts=h.map(function(v,i){return (i/(h.length-1)*94+1).toFixed(1)+","+(26-(v-mn)/r*24).toFixed(1)}).join(" ");
+return '<svg class="spark" viewBox="0 0 96 28" role="img" aria-label="מגמת 30 הימים האחרונים"><polyline points="'+pts+'" fill="none" stroke="'+c+'" stroke-width="1.6" stroke-linejoin="round"/></svg>'}
+function prep(j){data=j.items.map(function(x){return{name:x.n,sym:x.s,m:x.m,p:x.p,d1:pct(x.p,x.y),w1:pct(x.p,x.w),m1:pct(x.p,x.mo),h:x.h||demoHist(x)}});
+document.getElementById("demo").hidden=!j.demo;
+document.getElementById("upd").textContent="עודכן לאחרונה: "+new Date(j.updated).toLocaleDateString("he-IL")}
+function cell(v){var w=Math.min(Math.abs(v)/8,1)*46,c=v>=0?"up":"dn";
+return '<td class="chg"><div class="cell"><i style="'+(v>=0?"left:50%":"right:50%")+';width:'+w+'%;background:var(--'+c+'bg)"></i><b class="'+c+'">'+(v>0?"+":"")+v.toFixed(2)+'%</b></div></td>'}
+function render(){var r=data.filter(function(x){return market=="all"||x.m==market});
+if(sortK){r.sort(function(a,b){var x=a[sortK],y=b[sortK];var c=typeof x=="string"?x.localeCompare(y,"he"):x-y;return asc?c:-c})}
+document.getElementById("rows").innerHTML=r.map(function(x){return '<tr><td>'+x.name+'<span class="sym">'+x.sym+'</span></td><td class="num">'+x.p.toLocaleString("en-US")+'</td>'+cell(x.d1)+cell(x.w1)+cell(x.m1)+'<td>'+spark(x.h)+'</td></tr>'}).join("")}
+document.getElementById("filters").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;market=b.dataset.m;
+this.querySelectorAll("button").forEach(function(x){x.setAttribute("aria-pressed",x===b)});render()});
+document.querySelector("thead").addEventListener("click",function(e){var t=e.target.closest("th");if(!t)return;var k=t.dataset.k;asc=sortK==k?!asc:false;sortK=k;render()});
+function showAlerts(a){var el=document.getElementById("alerts");
+if(!a||!a.alerts||!a.alerts.length){el.hidden=true;return}
+el.hidden=false;el.innerHTML="<strong>תנועות חריגות</strong><ul>"+a.alerts.map(function(x){
+return "<li>"+x.name+": "+(x.pct>0?"+":"")+x.pct.toFixed(2)+"% "+x.period+"</li>"}).join("")+"</ul>"}
+fetch("alerts.json").then(function(r){if(!r.ok)throw 0;return r.json()}).then(showAlerts).catch(function(){});
+// Try the real data first (published by the update agent); fall back to demo data.
+fetch("data.json").then(function(r){if(!r.ok)throw 0;return r.json()}).catch(function(){return DEMO}).then(function(j){prep(j);render()});
+</script>
+</body>
+</html>
