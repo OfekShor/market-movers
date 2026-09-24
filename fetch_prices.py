@@ -21,8 +21,9 @@ ASSETS = [
     ("טסלה", "TSLA", "US"),
 ]
 
-   # Tel Aviv stocks are quoted in agorot (1/100 shekel) by Yahoo Finance; indices are in points.
-   AGOROT = {"TEVA.TA", "LUMI.TA", "ESLT.TA"}
+# Tel Aviv stocks are quoted in agorot (1/100 shekel) by Yahoo Finance; indices are in points.
+AGOROT = {"TEVA.TA", "LUMI.TA", "ESLT.TA"}
+
 
 def close_on_or_before(closes: pd.Series, day: pd.Timestamp) -> float:
     """Last available close on or before `day` (handles weekends and holidays)."""
